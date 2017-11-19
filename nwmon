@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+
+import os
+import itertools
+import sys
+import inspect
+
+
+def test_response_status_code_is(response_status_codes):
+    pass
+
+
+def load_nwmon_tests():
+    return {n[5:]: o for n, o in inspect.getmembers(sys.modules[__name__])
+            if (inspect.isfunction(o) and n.startswith('test_'))}
+
+
+def load_endpoints():
+    nwmon_tests = load_nwmon_tests()
+    endpoints = []
+
+    for d, e in [(x.strip(), x.strip().replace('.', '_').upper())
+                 for x in os.environ['NWMON_ENDPOINTS'].split(',')]:
+        for y in itertools.count():
+            protocol = os.getenv('NWMON_ENDPOINT_{}_{}_PROTOCOL'.format(e, y))
+            port = os.getenv('NWMON_ENDPOINT_{}_{}_PORT'.format(e, y))
+            path = os.getenv('NWMON_ENDPOINT_{}_{}_PATH'.format(e, y))
+            timeout = os.getenv('NWMON_ENDPOINT_{}_{}_TIMEOUT'.format(e, y))
+            tests = []
+
+            if (protocol, port, path) == (None, None, None) and y > 0:
+                break
+            elif (protocol, port, path) == (None, None, None) and y == 0:
+                protocol = 'https'
+                port = 443
+                path = '/'
+            else:
+                protocol = protocol or 'https'
+                port = port or 443
+                path = path or '/'
+
+            timeout = timeout or 5
+
+            for x in itertools.count():
+                type_ = os.getenv(
+                    'NWMON_ENDPOINT_{}_{}_TEST_{}_TYPE'.format(e, y, x))
+                params = os.getenv(
+                    'NWMON_ENDPOINT_{}_{}_TEST_{}_PARAMS'.format(e, y, x))
+
+                if (type_ is None) or (params is None):
+                    break
+
+                if not (type_ in nwmon_tests.keys()):
+                    raise Exception('Undefined test type {}'.format(type_))
+
+                tests.append((type_.strip(), params))
+
+            endpoints.append({
+                'domain': d,
+                'protocol': protocol,
+                'port': int(port),
+                'path': path,
+                'tests': tests,
+                'timeout': int(timeout)
+            })
+
+    return endpoints
+
+
+def nwmon():
+    endpoints = load_endpoints()
+
+
+if __name__ == '__main__':
+    nwmon()
