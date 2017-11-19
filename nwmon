@@ -5,6 +5,17 @@ import os
 import itertools
 import sys
 import inspect
+import datetime
+
+
+def time_execution(method):
+    def timed(*args, **kwargs):
+        start = datetime.datetime.now()
+        response = method(*args, **kwargs)
+        end = datetime.datetime.now()
+
+        return (response, (end-start).total_seconds() * 1000)
+    return timed
 
 
 def test_response_status_code_is(response_status_codes):
