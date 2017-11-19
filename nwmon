@@ -7,6 +7,10 @@ import itertools
 import os
 import socket
 import sys
+try:
+    import urllib2
+except ImportError:
+    import urllib.request as urllib2
 
 
 def time_execution(method):
@@ -88,14 +92,58 @@ def dns_name_lookup(name):
         return ('Error performing DNS name lookup: {}'.format(str(ex)), None)
 
 
+@time_execution
+def establish_connection(endpoint):
+    uri = "{}://{}:{}{}".format(endpoint['protocol'], endpoint['domain'],
+                                endpoint['port'], endpoint['path'])
+
+    open_director = urllib2.build_opener()
+    request = urllib2.Request(uri)
+    try:
+        return (None, open_director.open(request, timeout=endpoint['timeout']))
+    except Exception as ex:
+        return ('Error establishing connection: {}'.format(str(ex)), None)
+
+
+@time_execution
+def read(src, size=None):
+    try:
+        return (None, src.read(size) if size else src.read())
+    except Exception as ex:
+        return ('Error reading from stream: {}'.format(str(ex)), None)
+
+
 def monitor_endpoint(endpoint):
     endpoint['metrics'] = {}
     endpoint['success'] = 0
     endpoint['response_status_code'] = -1
 
-    dns_lookup_result, dns_lookup_time = dns_name_lookup(endpoint['domain'])
+    dns_lookup_result, endpoint['metrics']['dns_name_lookup'] = dns_name_lookup(endpoint['domain'])
 
-    endpoint['metrics']['dns_name_lookup'] = dns_lookup_time
+    if dns_lookup_result[1] is None:
+        endpoint['error'] = dns_lookup_result[0]
+        return endpoint
+
+    stream, endpoint['metrics']['connection_established'] = establish_connection(endpoint)
+
+    if stream[1] is None:
+        endpoint['error'] = stream[0]
+        return endpoint
+
+    response, endpoint['metrics']['time_to_first_byte'] = read(stream[1], 1)
+
+    if response[1] is None:
+        endpoint['error'] = response[0]
+        return endpoint
+
+    aresponse, endpoint['metrics']['time_to_last_byte'] = read(stream[1])
+
+    if aresponse[1] is None:
+        endpoint['error'] = response[0]
+        return endpoint
+
+    endpoint['response_status_code'] = stream[1].getcode()
+    endpoint['response_content'] = response[1] + aresponse[1]
 
     return endpoint
 
