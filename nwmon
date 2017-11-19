@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
-import os
-import itertools
-import sys
-import inspect
 import datetime
+import inspect
+import itertools
+import os
+import socket
+import sys
 
 
 def time_execution(method):
@@ -79,8 +80,28 @@ def load_endpoints():
     return endpoints
 
 
+@time_execution
+def dns_name_lookup(name):
+    try:
+        return (None, socket.gethostbyname(name))
+    except Exception as ex:
+        return ('Error performing DNS name lookup: {}'.format(str(ex)), None)
+
+
+def monitor_endpoint(endpoint):
+    endpoint['metrics'] = {}
+    endpoint['success'] = 0
+    endpoint['response_status_code'] = -1
+
+    dns_lookup_result, dns_lookup_time = dns_name_lookup(endpoint['domain'])
+
+    endpoint['metrics']['dns_name_lookup'] = dns_lookup_time
+
+    return endpoint
+
+
 def nwmon():
-    endpoints = load_endpoints()
+    endpoints = [monitor_endpoint(e) for e in load_endpoints()]
 
 
 if __name__ == '__main__':
