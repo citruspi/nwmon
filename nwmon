@@ -103,6 +103,10 @@ def load_endpoints():
 
                 tests.append((type_.strip(), params))
 
+            if len(tests) == 0:
+                tests.append(('response_status_code_matches_re',
+                              r'(?:2|3)\d{2}'))
+
             endpoints.append({
                 'domain': d,
                 'protocol': protocol,
