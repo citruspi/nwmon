@@ -5,6 +5,7 @@ import datetime
 import inspect
 import itertools
 import os
+import re
 import socket
 import sys
 try:
@@ -40,6 +41,11 @@ def test_response_status_code_is(expected_response_status_code, endpoint):
 def test_response_status_code_in(acceptable_response_status_codes, endpoint):
     return endpoint['response_status_code'] in [
         int(x.strip())for x in acceptable_response_status_codes.split(',')]
+
+
+@nwmon_test
+def test_response_status_code_matches_re(pattern, endpoint):
+    return re.match(pattern, str(endpoint['response_status_code'])) is not None
 
 
 @nwmon_test
