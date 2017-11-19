@@ -157,8 +157,21 @@ def monitor_endpoint(endpoint):
     return endpoint
 
 
+def test_endpoint(endpoint, tests):
+    for test_name, param in endpoint['tests']:
+        name, success = tests[test_name](param, endpoint)
+
+        if not success:
+            endpoint['error'] = 'Failed test {}'.format(name)
+            break
+
+    return endpoint
+
+
 def nwmon():
-    endpoints = [monitor_endpoint(e) for e in load_endpoints()]
+    nwmon_tests = load_nwmon_tests()
+    endpoints = [test_endpoint(monitor_endpoint(e), nwmon_tests)
+                 for e in load_endpoints()]
 
 
 if __name__ == '__main__':
