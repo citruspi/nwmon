@@ -53,6 +53,11 @@ def test_response_content_includes(string, endpoint):
     return string in endpoint['response_content']
 
 
+@nwmon_test
+def test_response_content_matches_re(pattern, endpoint):
+    return re.match(pattern, endpoint['response_content']) is not None
+
+
 def load_nwmon_tests():
     return {n[5:]: o for n, o in inspect.getmembers(sys.modules[__name__])
             if (inspect.isfunction(o) and n.startswith('test_'))}
