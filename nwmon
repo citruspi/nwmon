@@ -36,6 +36,11 @@ def test_response_status_code_is(expected_response_status_code, endpoint):
         expected_response_status_code)
 
 
+@nwmon_test
+def test_response_content_includes(string, endpoint):
+    return string in endpoint['response_content']
+
+
 def load_nwmon_tests():
     return {n[5:]: o for n, o in inspect.getmembers(sys.modules[__name__])
             if (inspect.isfunction(o) and n.startswith('test_'))}
