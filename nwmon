@@ -23,8 +23,17 @@ def time_execution(method):
     return timed
 
 
-def test_response_status_code_is(response_status_codes):
-    pass
+def nwmon_test(method):
+    def test(params, endpoint):
+        return ('{}({})'.format(method.__name__[5:], params),
+                method(params, endpoint))
+    return test
+
+
+@nwmon_test
+def test_response_status_code_is(expected_response_status_code, endpoint):
+    return endpoint['response_status_code'] == int(
+        expected_response_status_code)
 
 
 def load_nwmon_tests():
