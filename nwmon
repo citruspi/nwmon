@@ -37,6 +37,12 @@ def test_response_status_code_is(expected_response_status_code, endpoint):
 
 
 @nwmon_test
+def test_response_status_code_in(acceptable_response_status_codes, endpoint):
+    return endpoint['response_status_code'] in [
+        int(x.strip())for x in acceptable_response_status_codes.split(',')]
+
+
+@nwmon_test
 def test_response_content_includes(string, endpoint):
     return string in endpoint['response_content']
 
