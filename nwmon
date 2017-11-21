@@ -83,7 +83,10 @@ def load_endpoints():
                 'port': int(port),
                 'path': path,
                 'tests': tests,
-                'timeout': int(timeout)
+                'timeout': int(timeout),
+                'successful_tests': [],
+                'failed_tests': [],
+                'response': ''
             })
 
     return endpoints
@@ -141,12 +144,11 @@ def measure_endpoint(endpoint):
         'time_to_last_byte': millidiff(lbr_ts, fbr_ts)
     }
 
-def test_endpoint(endpoint, tests):
     endpoint['successful_tests'] = []
     endpoint['failed_tests'] = []
 
     for test_name, param in endpoint['tests']:
-        name, success = tests[test_name](param, endpoint)
+        name, success = nwmon_tests[test_name](param, endpoint)
 
         endpoint['successful_tests' if success else 'failed_tests'].append(
             name)
@@ -155,8 +157,7 @@ def test_endpoint(endpoint, tests):
 
 
 def nwmon():
-    nwmon_tests = load_nwmon_tests()
-    endpoints = [test_endpoint(monitor_endpoint(e), nwmon_tests)
+    endpoints = [measure_endpoint(e)
                  for e in load_endpoints()]
 
 
