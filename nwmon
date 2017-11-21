@@ -184,12 +184,14 @@ def monitor_endpoint(endpoint):
 
 
 def test_endpoint(endpoint, tests):
+    endpoint['successful_tests'] = []
+    endpoint['failed_tests'] = []
+
     for test_name, param in endpoint['tests']:
         name, success = tests[test_name](param, endpoint)
 
-        if not success:
-            endpoint['error'] = 'Failed test {}'.format(name)
-            break
+        endpoint['successful_tests' if success else 'failed_tests'].append(
+            name)
 
     return endpoint
 
