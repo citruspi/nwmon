@@ -9,20 +9,6 @@ import re
 import socket
 import ssl
 import sys
-try:
-    import urllib2
-except ImportError:
-    import urllib.request as urllib2
-
-
-def time_execution(method):
-    def timed(*args, **kwargs):
-        start = datetime.datetime.now()
-        response = method(*args, **kwargs)
-        end = datetime.datetime.now()
-
-        return (response, (end-start).total_seconds() * 1000)
-    return timed
 
 
 def nwmon_test(method):
