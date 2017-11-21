@@ -4,6 +4,7 @@
 import datetime
 import inspect
 import itertools
+import json
 import os
 import re
 import socket
@@ -156,9 +157,61 @@ def measure_endpoint(endpoint):
     return endpoint
 
 
+def output_endpoint_text(endpoint, last=False):
+    print('Endpoint:\t\t{}://{}:{}{}'.format(
+        endpoint['protocol'], endpoint['domain'], endpoint['port'],
+        endpoint['path']))
+
+    if 'error' in endpoint:
+        print('Error:\t\t\t{}\n'.format(endpoint['error']))
+
+    print('DNS Name Lookup:\t{}ms'.format(
+        endpoint['metrics'].get('dns_name_lookup', -1)))
+    print('Connection Established:\t{}ms'.format(
+        endpoint['metrics'].get('connection_established', -1)))
+    print('Time to First Byte:\t{}ms'.format(
+        endpoint['metrics'].get('time_to_first_byte', -1)))
+    print('Time to Last Byte:\t{}ms\n'.format(
+        endpoint['metrics'].get('time_to_last_byte', -1)))
+
+    print('Successful Tests')
+    for test in endpoint['successful_tests']:
+        print(test)
+
+    print('\nFailed Tests')
+    for test in endpoint['failed_tests']:
+        print(test)
+
+    if not last:
+        print('\n' + '-' * 40 + '\n')
+
+
+def output_endpoint_json(endpoint):
+    del endpoint['response']
+    del endpoint['timeout']
+    return endpoint
+
+
 def nwmon():
     endpoints = [measure_endpoint(e)
                  for e in load_endpoints()]
+
+    output_mode = os.getenv('NWMON_OUTPUT_MODE', 'text').lower()
+
+    if output_mode == 'text':
+        for idx, endpoint in enumerate(endpoints):
+            output_endpoint_text(endpoint, idx == len(endpoints)-1)
+    elif output_mode == 'json':
+        print(json.dumps(
+            {
+                "endpoints": [output_endpoint_json(e) for e in endpoints]
+            }))
+    elif output_mode == 'jsonpretty':
+        print(json.dumps(
+            {
+                "endpoints": [output_endpoint_json(e) for e in endpoints]
+            }, indent=4, sort_keys=True))
+
 
 
 if __name__ == '__main__':
