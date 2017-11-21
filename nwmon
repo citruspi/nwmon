@@ -7,6 +7,7 @@ import itertools
 import os
 import re
 import socket
+import ssl
 import sys
 try:
     import urllib2
@@ -119,69 +120,57 @@ def load_endpoints():
     return endpoints
 
 
-@time_execution
-def dns_name_lookup(name):
+def measure_endpoint(endpoint):
+    nwmon_tests = load_nwmon_tests()
+    host = None
+
+    start_ts = datetime.datetime.now()
+
     try:
-        return (None, socket.gethostbyname(name))
-    except Exception as ex:
-        return ('Error performing DNS name lookup: {}'.format(str(ex)), None)
-
-
-@time_execution
-def establish_connection(endpoint):
-    uri = "{}://{}:{}{}".format(endpoint['protocol'], endpoint['domain'],
-                                endpoint['port'], endpoint['path'])
-
-    open_director = urllib2.build_opener()
-    request = urllib2.Request(uri)
-    try:
-        return (None, open_director.open(request, timeout=endpoint['timeout']))
-    except Exception as ex:
-        return ('Error establishing connection: {}'.format(str(ex)), None)
-
-
-@time_execution
-def read(src, size=None):
-    try:
-        return (None, src.read(size) if size else src.read())
-    except Exception as ex:
-        return ('Error reading from stream: {}'.format(str(ex)), None)
-
-
-def monitor_endpoint(endpoint):
-    endpoint['metrics'] = {}
-    endpoint['success'] = 0
-    endpoint['response_status_code'] = -1
-
-    dns_lookup_result, endpoint['metrics']['dns_name_lookup'] = dns_name_lookup(endpoint['domain'])
-
-    if dns_lookup_result[1] is None:
-        endpoint['error'] = dns_lookup_result[0]
+        host = socket.gethostbyname(endpoint['domain'])
+        dns_resolved_ts = datetime.datetime.now()
+    except Exception:
+        endpoint['Error'] = 'Failed to perform DNS lookup'
         return endpoint
 
-    stream, endpoint['metrics']['connection_established'] = establish_connection(endpoint)
+    tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    if stream[1] is None:
-        endpoint['error'] = stream[0]
-        return endpoint
+    if endpoint['protocol'] == 'https':
+        tcp = ssl.wrap_socket(tcp, ssl_version=ssl.PROTOCOL_TLS)
 
-    response, endpoint['metrics']['time_to_first_byte'] = read(stream[1], 1)
+    conn_init_ts = datetime.datetime.now()
 
-    if response[1] is None:
-        endpoint['error'] = response[0]
-        return endpoint
+    tcp.connect((host, endpoint['port']))
 
-    aresponse, endpoint['metrics']['time_to_last_byte'] = read(stream[1])
+    conn_est_ts = datetime.datetime.now()
 
-    if aresponse[1] is None:
-        endpoint['error'] = response[0]
-        return endpoint
+    tcp.send('GET {} HTTP/1.1\r\nHost: {}\r\n\r\n'.format(endpoint['path'],
+                                                          endpoint['domain']))
 
-    endpoint['response_status_code'] = stream[1].getcode()
-    endpoint['response_content'] = response[1] + aresponse[1]
+    request_init_ts = datetime.datetime.now()
 
-    return endpoint
+    endpoint['response'] = tcp.recv(1)
 
+    fbr_ts = datetime.datetime.now()
+
+    while True:
+        data = tcp.recv(1024)
+        endpoint['response'] += data
+        if len(data) < 1024:
+            break
+
+    lbr_ts = datetime.datetime.now()
+
+    tcp.close()
+
+    millidiff = lambda x, y: (x-y).total_seconds() * 1000
+
+    endpoint['metrics'] = {
+        'dns_name_lookup': millidiff(dns_resolved_ts, start_ts),
+        'connection_established': millidiff(conn_est_ts, conn_init_ts),
+        'time_to_first_byte': millidiff(fbr_ts, request_init_ts),
+        'time_to_last_byte': millidiff(lbr_ts, fbr_ts)
+    }
 
 def test_endpoint(endpoint, tests):
     endpoint['successful_tests'] = []
