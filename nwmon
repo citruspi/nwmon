@@ -19,30 +19,13 @@ def nwmon_test(method):
 
 
 @nwmon_test
-def test_response_status_code_is(expected_response_status_code, endpoint):
-    return endpoint['response_status_code'] == int(
-        expected_response_status_code)
-
-
-@nwmon_test
-def test_response_status_code_in(acceptable_response_status_codes, endpoint):
-    return endpoint['response_status_code'] in [
-        int(x.strip())for x in acceptable_response_status_codes.split(',')]
-
-
-@nwmon_test
-def test_response_status_code_matches_re(pattern, endpoint):
-    return re.match(pattern, str(endpoint['response_status_code'])) is not None
-
-
-@nwmon_test
 def test_response_content_includes(string, endpoint):
-    return string in endpoint['response_content']
+    return string in endpoint['response']
 
 
 @nwmon_test
 def test_response_content_matches_re(pattern, endpoint):
-    return re.match(pattern, endpoint['response_content']) is not None
+    return re.match(pattern, endpoint['response']) is not None
 
 
 def load_nwmon_tests():
@@ -91,8 +74,8 @@ def load_endpoints():
                 tests.append((type_.strip(), params))
 
             if len(tests) == 0:
-                tests.append(('response_status_code_matches_re',
-                              r'(?:2|3)\d{2}'))
+                tests.append(('response_content_matches_re',
+                              r'HTTP/\d.\d (?:2|3)\d{2}'))
 
             endpoints.append({
                 'domain': d,
