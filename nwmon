@@ -10,6 +10,11 @@ import re
 import socket
 import ssl
 import sys
+import time
+if sys.version_info > (3, 0):
+    import http.client as httplib
+else:
+    import httplib
 
 
 def nwmon_test(method):
@@ -214,6 +219,66 @@ def output_endpoint_json(endpoint):
     return endpoint
 
 
+def output_endpoint_collectd_http(endpoint):
+    if os.getenv('NWMON_OUTPUT_COLLECTD_HTTP_HOST_PROTOCOL', 'https') == 'https':
+        conn = httplib.HTTPSConnection(
+            os.environ['NWMON_OUTPUT_COLLECTD_HTTP_HOST_DOMAIN'])
+    else:
+        conn = httplib.HTTPConnection(
+            os.environ['NWMON_OUTPUT_COLLECTD_HTTP_HOST_DOMAIN'])
+
+    payload = [
+        {
+            "values": [
+                endpoint['metrics']['dns_name_lookup'],
+                endpoint['metrics']['connection_established'],
+                endpoint['metrics']['time_to_first_byte'],
+                endpoint['metrics']['time_to_last_byte'],
+                int(endpoint['available'])
+            ],
+            "dstypes": ["gauge", "gauge", "gauge", "gauge", "gauge"],
+            "dsnames": [
+                "dns_name_lookup",
+                "connection_established",
+                "time_to_first_byte",
+                "time_to_last_byte",
+                "available"
+            ],
+            "time": time.time(),
+            "interval": 60,
+            "plugin": "nwmon",
+            "host": os.getenv('NWMON_OUTPUT_COLLECTD_HTTP_MONITOR_HOST',
+                              socket.gethostname()),
+            "plugin_instance": '{}://{}:{}{}'.format(endpoint['protocol'],
+                                                     endpoint['domain'],
+                                                     endpoint['port'],
+                                                     endpoint['path']),
+            "type": "nwmon",
+            "type_instance": ""
+        }
+    ]
+
+    if sys.version_info > (3, 0):
+        payload = json.dumps(payload, indent=4).encode('utf-8')
+    else:
+        payload = json.dumps(payload, indent=4)
+
+    headers = {
+        'Content-Type': "application/json",
+        'Content-Length': len(payload)
+    }
+
+    conn.request("POST", os.environ['NWMON_OUTPUT_COLLECTD_HTTP_HOST_PATH'],
+                 payload, headers)
+
+    res = conn.getresponse()
+
+    if sys.version_info > (3, 0):
+        print(res.read().decode("utf-8"))
+    else:
+        print(res.read())
+
+
 def nwmon():
     endpoints = [measure_endpoint(e)
                  for e in load_endpoints()]
@@ -237,7 +302,9 @@ def nwmon():
             {
                 "endpoints": [output_endpoint_json(e) for e in endpoints]
             }, indent=4, sort_keys=True))
-
+    elif output_mode == 'collectd_http':
+        for endpoint in endpoints:
+            output_endpoint_collectd_http(endpoint)
 
 
 if __name__ == '__main__':
