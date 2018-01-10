@@ -108,6 +108,7 @@ def measure_endpoint(endpoint):
         return endpoint
 
     tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp.settimeout(endpoint['timeout'])
 
     if endpoint['protocol'] == 'https':
         tcp = ssl.wrap_socket(tcp, ssl_version=ssl.PROTOCOL_TLS)
