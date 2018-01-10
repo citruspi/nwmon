@@ -87,7 +87,8 @@ def load_endpoints():
                 'timeout': int(timeout),
                 'successful_tests': [],
                 'failed_tests': [],
-                'response': ''
+                'response': '',
+                'available': False
             })
 
     return endpoints
@@ -195,6 +196,10 @@ def output_endpoint_json(endpoint):
 def nwmon():
     endpoints = [measure_endpoint(e)
                  for e in load_endpoints()]
+
+    for endpoint in endpoints:
+        if len(endpoint['failed_tests']) == 0:
+            endpoint['available'] = True
 
     output_mode = os.getenv('NWMON_OUTPUT_MODE', 'text').lower()
 
