@@ -268,6 +268,10 @@ def output_endpoint_collectd_http(endpoint):
         'Content-Length': len(payload)
     }
 
+    auth = os.getenv('NWMON_OUTPUT_COLLECTD_HTTP_HOST_AUTH')
+    if auth:
+        headers['Authorization'] = 'Basic {}'.format(auth)
+
     conn.request("POST", os.environ['NWMON_OUTPUT_COLLECTD_HTTP_HOST_PATH'],
                  payload, headers)
 
