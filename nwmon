@@ -88,7 +88,8 @@ def load_endpoints():
                 'successful_tests': [],
                 'failed_tests': [],
                 'response': '',
-                'available': False
+                'available': False,
+                'error': ''
             })
 
     return endpoints
@@ -104,7 +105,7 @@ def measure_endpoint(endpoint):
         host = socket.gethostbyname(endpoint['domain'])
         dns_resolved_ts = datetime.datetime.now()
     except Exception:
-        endpoint['Error'] = 'Failed to perform DNS lookup'
+        endpoint['error'] = 'Failed to perform DNS lookup'
         return endpoint
 
     tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -115,28 +116,47 @@ def measure_endpoint(endpoint):
 
     conn_init_ts = datetime.datetime.now()
 
-    tcp.connect((host, endpoint['port']))
+    try:
+        tcp.connect((host, endpoint['port']))
+    except Exception:
+        endpoint['error'] = 'Failed to establish connection to host'
+        return endpoint
 
     conn_est_ts = datetime.datetime.now()
 
-    tcp.send('GET {} HTTP/1.1\r\nHost: {}\r\n\r\n'.format(endpoint['path'],
-                                                          endpoint['domain']))
+    try:
+        if sys.version_info > (3, 0):
+            tcp.send('GET {} HTTP/1.1\r\nHost: {}\r\n\r\n'.format(endpoint['path'],
+                                                                  endpoint['domain']).encode('utf-8'))
+        else:
+            tcp.send('GET {} HTTP/1.1\r\nHost: {}\r\n\r\n'.format(endpoint['path'],
+                                                                  endpoint['domain']))
+    except Exception:
+        endpoint['error'] = 'Failed to send request to server'
+        return endpoint
 
-    request_init_ts = datetime.datetime.now()
+    try:
+        request_init_ts = datetime.datetime.now()
 
-    endpoint['response'] = tcp.recv(1)
+        endpoint['response'] = tcp.recv(1)
 
-    fbr_ts = datetime.datetime.now()
+        fbr_ts = datetime.datetime.now()
 
-    while True:
-        data = tcp.recv(1024)
-        endpoint['response'] += data
-        if len(data) < 1024:
-            break
+        while True:
+            data = tcp.recv(1024)
+            endpoint['response'] += data
+            if len(data) < 1024:
+                break
 
-    lbr_ts = datetime.datetime.now()
+        lbr_ts = datetime.datetime.now()
+    except Exception:
+        endpoint['error'] = 'Failed to read response from server'
+        return endpoint
 
     tcp.close()
+
+    if sys.version_info > (3, 0):
+        endpoint['response'] = endpoint['response'].decode('utf-8')
 
     millidiff = lambda x, y: (x-y).total_seconds() * 1000
 
@@ -199,7 +219,7 @@ def nwmon():
                  for e in load_endpoints()]
 
     for endpoint in endpoints:
-        if len(endpoint['failed_tests']) == 0:
+        if len(endpoint['failed_tests']) == 0 and endpoint['error'] == '':
             endpoint['available'] = True
 
     output_mode = os.getenv('NWMON_OUTPUT_MODE', 'text').lower()
