@@ -189,10 +189,10 @@ def output_endpoint_text(endpoint, last=False):
         endpoint['protocol'], endpoint['domain'], endpoint['port'],
         endpoint['path']))
 
-    if 'error' in endpoint:
-        print('Error:\t\t\t{}\n'.format(endpoint['error']))
+    if 'error' in endpoint and len(endpoint['error'].strip()) > 0:
+        print('Error:\t\t\t{}'.format(endpoint['error']))
 
-    print('DNS Name Lookup:\t{}ms'.format(
+    print('\nDNS Name Lookup:\t{}ms'.format(
         endpoint['metrics'].get('dns_name_lookup', -1)))
     print('Connection Established:\t{}ms'.format(
         endpoint['metrics'].get('connection_established', -1)))
