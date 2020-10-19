@@ -43,7 +43,7 @@ def load_endpoints():
     nwmon_tests = load_nwmon_tests()
     endpoints = []
 
-    for d, e in [(x.strip(), x.strip().replace('.', '_').upper())
+    for d, e in [(x.strip(), x.strip().replace('.', '_').replace('-', '_').upper())
                  for x in os.environ['NWMON_ENDPOINTS'].split(',')]:
         for y in itertools.count():
             protocol = os.getenv('NWMON_ENDPOINT_{}_{}_PROTOCOL'.format(e, y))
