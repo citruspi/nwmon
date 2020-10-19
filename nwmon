@@ -201,11 +201,11 @@ def output_endpoint_text(endpoint, last=False):
     print('Time to Last Byte:\t{}ms\n'.format(
         endpoint['metrics'].get('time_to_last_byte', -1)))
 
-    print('Successful Tests')
+    if len(endpoint['successful_tests']) > 0: print('Successful Tests')
     for test in endpoint['successful_tests']:
-        print(test)
+        print(f'- {test}')
 
-    print('\nFailed Tests')
+    if len(endpoint['failed_tests']) > 0: print('\nFailed Tests')
     for test in endpoint['failed_tests']:
         print(test)
 
