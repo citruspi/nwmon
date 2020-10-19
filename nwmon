@@ -311,5 +311,9 @@ def nwmon():
             output_endpoint_collectd_http(endpoint)
 
 
+def lambda_handler(event, context):
+    nwmon()
+
+
 if __name__ == '__main__':
     nwmon()
