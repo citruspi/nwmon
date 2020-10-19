@@ -221,6 +221,61 @@ def output_endpoint_json(endpoint):
     return endpoint
 
 
+def output_endpoint_influx_v2_http(endpoints):
+    bool_to_int = lambda x: {False: 0, True: 1}[x]
+
+    if os.getenv('NWMON_OUTPUT_INFLUX_V2_HTTP_HOST_PROTOCOL', 'https') == 'https':
+        conn = httplib.HTTPSConnection(
+            os.environ['NWMON_OUTPUT_INFLUX_V2_HTTP_HOST_DOMAIN'])
+    else:
+        conn = httplib.HTTPConnection(
+            os.environ['NWMON_OUTPUT_INFLUX_V2_HTTP_HOST_DOMAIN'])
+
+    bucket = os.getenv('NWMON_OUTPUT_INFLUX_V2_HTTP_BUCKET')
+
+    if bucket is None: raise Exception('Influx v2 output mode requires bucket')
+
+    payload = '\n'.join([
+        ' '.join([
+            ','.join([
+                'nwmon',
+                f'domain_name={endpoint["domain"]}',
+                f'protocol={endpoint["protocol"]}',
+                f'port={endpoint["port"]}',
+                f'path={endpoint["path"]}'
+            ]),
+            ','.join([
+                f'dns_name_lookup={endpoint["metrics"]["dns_name_lookup"]}',
+                f'connection_established={endpoint["metrics"]["connection_established"]}',
+                f'time_to_first_byte={endpoint["metrics"]["time_to_first_byte"]}',
+                f'time_to_last_byte={endpoint["metrics"]["time_to_last_byte"]}',
+                f'available={bool_to_int(endpoint["available"])}'
+            ]),
+            f'{int(time.time())}'
+        ]) for endpoint in endpoints
+    ])
+
+    headers = {
+        'Content-Length': len(payload)
+    }
+
+    auth = os.getenv('NWMON_OUTPUT_INFLUX_V2_HTTP_HOST_AUTH')
+    if auth:
+        headers['Authorization'] = 'Token {}'.format(auth)
+
+    conn.request("POST",
+                 f"{os.getenv('NWMON_OUTPUT_INFLUX_V2_HTTP_HOST_PATH', '/api/v2/write')}?bucket={bucket}&precision=s",
+                 payload,
+                 headers)
+
+    res = conn.getresponse()
+
+    if sys.version_info > (3, 0):
+        print(res.read().decode("utf-8"))
+    else:
+        print(res.read())
+
+
 def output_endpoint_collectd_http(endpoint):
     if os.getenv('NWMON_OUTPUT_COLLECTD_HTTP_HOST_PROTOCOL', 'https') == 'https':
         conn = httplib.HTTPSConnection(
@@ -311,6 +366,8 @@ def nwmon():
     elif output_mode == 'collectd_http':
         for endpoint in endpoints:
             output_endpoint_collectd_http(endpoint)
+    elif output_mode == 'influx_v2_http':
+        output_endpoint_influx_v2_http(endpoints)
     else:
         raise Exception(f'unsupported output mode: {output_mode}')
 
