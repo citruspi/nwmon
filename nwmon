@@ -216,6 +216,8 @@ def output_endpoint_text(endpoint, last=False):
 def output_endpoint_json(endpoint):
     del endpoint['response']
     del endpoint['timeout']
+    if len(endpoint['error']) == 0: endpoint['error'] = None
+
     return endpoint
 
 
