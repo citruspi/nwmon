@@ -311,6 +311,8 @@ def nwmon():
     elif output_mode == 'collectd_http':
         for endpoint in endpoints:
             output_endpoint_collectd_http(endpoint)
+    else:
+        raise Exception(f'unsupported output mode: {output_mode}')
 
 
 def lambda_handler(event, context):
